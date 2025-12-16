@@ -575,7 +575,7 @@ func (wf *Workflow) Run(requirement string) error {
 		ctx.Results[stage.Name] = result
 
 		if stage.OutputFile != "" {
-			outPath := filepath.Join(workDir, stage.OutputFile)
+			outPath := filepath.Join(workDir, fmt.Sprintf("%d.%s", i, stage.OutputFile))
 			cleanResult := stripANSI(result)
 			os.WriteFile(outPath, []byte(cleanResult), 0644)
 			fmt.Printf("%s Saved: %s\n", green("✓"), outPath)
@@ -664,7 +664,7 @@ func resumeWorkflow() error {
 		ctx.Results[stage.Name] = result
 
 		if stage.OutputFile != "" {
-			outPath := filepath.Join(workDir, stage.OutputFile)
+			outPath := filepath.Join(workDir, fmt.Sprintf("%d.%s", i, stage.OutputFile))
 			os.WriteFile(outPath, []byte(stripANSI(result)), 0644)
 		}
 		fmt.Printf("%s Stage completed\n\n", green("✓"))
@@ -681,39 +681,53 @@ func (ctx *WorkflowContext) log(format string, args ...interface{}) {
 	}
 }
 
+func findOutputFile(workDir, name string) []byte {
+	entries, _ := os.ReadDir(workDir)
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), "."+name) {
+			content, _ := os.ReadFile(filepath.Join(workDir, e.Name()))
+			return content
+		}
+	}
+	return nil
+}
+
 func runStage(stage *Stage, ctx *WorkflowContext) (string, error) {
 	prompt := stage.Prompt
 	prompt = strings.ReplaceAll(prompt, "{{.Requirement}}", ctx.Requirement)
 	prompt = strings.ReplaceAll(prompt, "{{.ProjectContext}}", ctx.Results["project-context"])
 
-	planContent, _ := os.ReadFile(filepath.Join(ctx.WorkDir, "plan.md"))
+	planContent := findOutputFile(ctx.WorkDir, "plan.md")
 	if len(planContent) == 0 {
-		planContent, _ = os.ReadFile(filepath.Join(ctx.WorkDir, "analysis.md"))
+		planContent = findOutputFile(ctx.WorkDir, "analysis.md")
 	}
 	if len(planContent) == 0 {
-		planContent, _ = os.ReadFile(filepath.Join(ctx.WorkDir, "refactor-plan.md"))
+		planContent = findOutputFile(ctx.WorkDir, "api-plan.md")
+	}
+	if len(planContent) == 0 {
+		planContent = findOutputFile(ctx.WorkDir, "refactor-plan.md")
 	}
 	prompt = strings.ReplaceAll(prompt, "{{.PlanContent}}", string(planContent))
 
-	tasksContent, _ := os.ReadFile(filepath.Join(ctx.WorkDir, "tasks.md"))
+	tasksContent := findOutputFile(ctx.WorkDir, "tasks.md")
 	if len(tasksContent) == 0 {
-		tasksContent, _ = os.ReadFile(filepath.Join(ctx.WorkDir, "fix-tasks.md"))
+		tasksContent = findOutputFile(ctx.WorkDir, "fix-tasks.md")
 	}
 	if len(tasksContent) == 0 {
-		tasksContent, _ = os.ReadFile(filepath.Join(ctx.WorkDir, "refactor-tasks.md"))
+		tasksContent = findOutputFile(ctx.WorkDir, "refactor-tasks.md")
 	}
 	prompt = strings.ReplaceAll(prompt, "{{.TasksContent}}", string(tasksContent))
 
-	reviewContent, _ := os.ReadFile(filepath.Join(ctx.WorkDir, "review.md"))
+	reviewContent := findOutputFile(ctx.WorkDir, "review.md")
 	prompt = strings.ReplaceAll(prompt, "{{.ReviewContent}}", string(reviewContent))
 
-	verifyContent, _ := os.ReadFile(filepath.Join(ctx.WorkDir, "verify.md"))
+	verifyContent := findOutputFile(ctx.WorkDir, "verify.md")
 	prompt = strings.ReplaceAll(prompt, "{{.VerifyContent}}", string(verifyContent))
 
-	diffContent, _ := os.ReadFile(filepath.Join(ctx.WorkDir, "diff.md"))
+	diffContent := findOutputFile(ctx.WorkDir, "diff.md")
 	prompt = strings.ReplaceAll(prompt, "{{.DiffContent}}", string(diffContent))
 
-	securityContent, _ := os.ReadFile(filepath.Join(ctx.WorkDir, "security.md"))
+	securityContent := findOutputFile(ctx.WorkDir, "security.md")
 	prompt = strings.ReplaceAll(prompt, "{{.SecurityContent}}", string(securityContent))
 
 	ctx.log("### Prompt\n```\n%s\n```\n\n", truncate(prompt, 1000))
