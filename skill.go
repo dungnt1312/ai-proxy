@@ -221,13 +221,23 @@ func runSkillCommand(args []string) {
 
 	// Parse inputs from args: --input=value
 	inputs := make(map[string]string)
+	var overrideBackend string
 	for _, arg := range args[1:] {
 		if strings.HasPrefix(arg, "--") {
 			parts := strings.SplitN(strings.TrimPrefix(arg, "--"), "=", 2)
 			if len(parts) == 2 {
-				inputs[parts[0]] = parts[1]
+				if parts[0] == "backend" {
+					overrideBackend = parts[1]
+				} else {
+					inputs[parts[0]] = parts[1]
+				}
 			}
 		}
+	}
+
+	// Override backend if specified
+	if overrideBackend != "" {
+		skill.Stage.Backend = overrideBackend
 	}
 
 	// Check required inputs
@@ -242,12 +252,16 @@ func runSkillCommand(args []string) {
 					fmt.Printf(" [--%s=<value>]", i.Name)
 				}
 			}
-			fmt.Println()
+			fmt.Println(" [--backend=<name>]")
 			return
 		}
 	}
 
-	fmt.Printf("%s Running skill: %s\n", cyan("▶"), skill.Name)
+	backendInfo := skill.Stage.Backend
+	if backendInfo == "" {
+		backendInfo = current
+	}
+	fmt.Printf("%s Running skill: %s (%s)\n", cyan("▶"), skill.Name, backendInfo)
 	result, err := skill.Run(inputs, nil)
 	if err != nil {
 		fmt.Printf("%s %v\n", red("Error:"), err)
