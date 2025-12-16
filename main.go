@@ -6,10 +6,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/peterh/liner"
 )
 
 type Message struct {
@@ -39,10 +41,6 @@ func buildArgs(prompt string) []string {
 		args = append(args, b.PromptFlag, prompt)
 	} else {
 		args = append(args, prompt)
-	}
-
-	if len(history) > 0 && b.ResumeFlag != "" {
-		args = append(args, b.ResumeFlag)
 	}
 
 	if currentModel != "" && b.ModelFlag != "" {
@@ -255,18 +253,86 @@ func runInteractive() {
 	fmt.Println(green("🔀 AI Proxy CLI"))
 	fmt.Printf("Backend: %s %s\n\n", cyan(config.Backends[current].Name), dim("(/? for help)"))
 
-	scanner := bufio.NewScanner(os.Stdin)
+	line := liner.NewLiner()
+	defer line.Close()
+	line.SetCtrlCAborts(true)
+
+	// Tab completion
+	commands := []string{"/init", "/switch", "/list", "/workflow", "/resume", "/clear", "/config", "/help", "quit"}
+	workflows := []string{"feature", "bugfix", "refactor", "api", "test", "docs", "docker", "history", "--dry-run"}
+	backends := []string{"claude", "kiro", "gemini", "cursor"}
+
+	line.SetCompleter(func(line string) []string {
+		var completions []string
+		line = strings.TrimSpace(line)
+
+		// Complete commands
+		if strings.HasPrefix(line, "/") || line == "" {
+			for _, cmd := range commands {
+				if strings.HasPrefix(cmd, line) {
+					completions = append(completions, cmd)
+				}
+			}
+		}
+
+		// Complete /workflow <name>
+		if strings.HasPrefix(line, "/workflow ") || strings.HasPrefix(line, "/w ") {
+			prefix := strings.TrimPrefix(strings.TrimPrefix(line, "/workflow "), "/w ")
+			for _, wf := range workflows {
+				if strings.HasPrefix(wf, prefix) {
+					completions = append(completions, strings.Split(line, " ")[0]+" "+wf)
+				}
+			}
+		}
+
+		// Complete /switch <backend>
+		if strings.HasPrefix(line, "/switch ") || strings.HasPrefix(line, "/s ") {
+			prefix := strings.TrimPrefix(strings.TrimPrefix(line, "/switch "), "/s ")
+			for _, b := range backends {
+				if strings.HasPrefix(b, prefix) {
+					completions = append(completions, strings.Split(line, " ")[0]+" "+b)
+				}
+			}
+		}
+
+		// Complete /resume <folder>
+		if strings.HasPrefix(line, "/resume ") {
+			prefix := strings.TrimPrefix(line, "/resume ")
+			if entries, err := os.ReadDir(".workflow"); err == nil {
+				for _, e := range entries {
+					if e.IsDir() && strings.HasPrefix(e.Name(), prefix) {
+						completions = append(completions, "/resume "+e.Name())
+					}
+				}
+			}
+		}
+
+		return completions
+	})
+
+	// Load history
+	historyFile := filepath.Join(os.TempDir(), ".ai-proxy-history")
+	if f, err := os.Open(historyFile); err == nil {
+		line.ReadHistory(f)
+		f.Close()
+	}
 
 	for {
-		fmt.Printf("%s ", green(fmt.Sprintf("[%s]>", current)))
-		if !scanner.Scan() {
+		prompt := fmt.Sprintf("[%s]> ", current)
+		input, err := line.Prompt(prompt)
+		if err != nil {
+			if err == liner.ErrPromptAborted {
+				fmt.Println(yellow("\nBye!"))
+			}
 			break
 		}
 
-		input := strings.TrimSpace(scanner.Text())
+		input = strings.TrimSpace(input)
 		if input == "" {
 			continue
 		}
+		line.AppendHistory(input)
+
 		if input == "quit" {
 			fmt.Println(yellow("Bye!"))
 			break
@@ -281,6 +347,12 @@ func runInteractive() {
 		if resp != "" {
 			history = append(history, Message{"assistant", resp})
 		}
+	}
+
+	// Save history
+	if f, err := os.Create(historyFile); err == nil {
+		line.WriteHistory(f)
+		f.Close()
 	}
 }
 
