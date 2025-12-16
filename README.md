@@ -31,26 +31,22 @@ Install and authenticate at least one AI CLI:
 ```bash
 # Claude Code CLI
 npm install -g @anthropic-ai/claude-code
-claude
 
 # Kiro CLI (AWS)
-# Download from https://kiro.dev or via AWS
-kiro-cli
+curl -fsSL https://cli.kiro.dev/install | bash
 
 # Gemini CLI (Google)
-npm install -g @anthropic-ai/gemini-cli
-gemini
+npm install -g @google/gemini-cli
 
 # Cursor Agent
-npm install -g cursor-agent
-cursor-agent
+curl -fsSL https://cursor.com/install | bash
 ```
 
 Check installed CLIs:
 ```bash
-claude --version      # Claude Code
-kiro-cli --version    # Kiro CLI
-gemini --version      # Gemini CLI
+claude --version       # Claude Code
+kiro-cli --version     # Kiro CLI
+gemini --version       # Gemini CLI
 cursor-agent --version # Cursor Agent
 ```
 
