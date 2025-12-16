@@ -1,0 +1,23 @@
+name: project-skill-creator
+description: Analyze project source code, understand patterns/rules, and create project-specific skills. Use when you want to create a skill tailored to your codebase conventions.
+version: 1.0.0
+author: ai-proxy
+
+stage:
+  backend: kiro
+  model: ""
+  interactive: false
+  outputFile: ""
+
+inputs:
+  - name: purpose
+    description: What the skill should help with
+    required: true
+  - name: files
+    description: Key files/folders to analyze (comma-separated)
+    required: false
+  - name: name
+    description: Skill name (lowercase, hyphenated)
+    required: false
+
+tags: [skill, meta, project, create, analyze]
