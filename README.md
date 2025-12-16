@@ -29,19 +29,29 @@ cp proxy ~/.local/bin/ai-proxy
 Install and authenticate at least one AI CLI:
 
 ```bash
-# Claude CLI
+# Claude Code CLI
 npm install -g @anthropic-ai/claude-code
-claude login
+claude
 
 # Kiro CLI (AWS)
-# Follow AWS Kiro installation guide
+# Download from https://kiro.dev or via AWS
+kiro-cli
 
-# Gemini CLI
+# Gemini CLI (Google)
 npm install -g @anthropic-ai/gemini-cli
-gemini login
+gemini
 
 # Cursor Agent
 npm install -g cursor-agent
+cursor-agent
+```
+
+Check installed CLIs:
+```bash
+claude --version      # Claude Code
+kiro-cli --version    # Kiro CLI
+gemini --version      # Gemini CLI
+cursor-agent --version # Cursor Agent
 ```
 
 ## Quick Start
