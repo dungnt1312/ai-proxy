@@ -1,0 +1,21 @@
+name: explain
+description: Explain code or concepts in simple terms
+version: 1.0.0
+author: ai-proxy
+
+stage:
+  backend: gemini
+  model: ""
+  interactive: false
+  outputFile: ""
+
+inputs:
+  - name: topic
+    description: Code or concept to explain
+    required: true
+  - name: level
+    description: Explanation level (beginner, intermediate, advanced)
+    required: false
+    default: intermediate
+
+tags: [explain, learn, documentation]

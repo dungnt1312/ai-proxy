@@ -1,0 +1,21 @@
+name: security-audit
+description: Audit code for security vulnerabilities
+version: 1.0.0
+author: ai-proxy
+
+stage:
+  backend: kiro
+  model: ""
+  interactive: false
+  outputFile: security.md
+
+inputs:
+  - name: code
+    description: Code or file content to audit
+    required: true
+  - name: type
+    description: Type of application (web, api, cli)
+    required: false
+    default: api
+
+tags: [security, audit, vulnerability]

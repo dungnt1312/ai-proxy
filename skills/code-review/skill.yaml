@@ -1,0 +1,20 @@
+name: code-review
+description: Review code changes for quality and best practices
+version: 1.0.0
+author: ai-proxy
+
+stage:
+  backend: kiro
+  model: ""
+  interactive: false
+  outputFile: review.md
+
+inputs:
+  - name: diff
+    description: Code diff to review
+    required: true
+  - name: focus
+    description: Specific areas to focus on
+    required: false
+
+tags: [review, quality, code]
