@@ -92,6 +92,16 @@ ai-proxy --help              # Show help
 
 ### Built-in Workflows
 
+| Workflow | Description | Stages |
+|----------|-------------|--------|
+| `feature` | Full feature development | plan → security → tasks → execute → verify → review → fix |
+| `bugfix` | Bug analysis and fix | analyze → plan → fix |
+| `refactor` | Code refactoring | analyze → review → execute |
+| `api` | REST API development | plan → openapi → code → verify |
+| `test` | Write tests | analyze → write → verify |
+| `docs` | Generate documentation | scan → write |
+| `docker` | Dockerize application | analyze → create → verify |
+
 #### `feature` - Feature Development (7 stages)
 
 ```
@@ -126,6 +136,30 @@ analyze (gemini) → plan (kiro) → fix (claude)
 analyze (gemini) → review (kiro) → execute (claude)
 ```
 
+#### `api` - REST API Development (4 stages)
+
+```
+plan (gemini) → openapi (kiro) → code (claude) → verify (auto)
+```
+
+#### `test` - Write Tests (3 stages)
+
+```
+analyze (gemini) → write (claude) → verify (auto)
+```
+
+#### `docs` - Generate Documentation (2 stages)
+
+```
+scan (gemini) → write (claude)
+```
+
+#### `docker` - Dockerize Application (3 stages)
+
+```
+analyze (gemini) → create (claude) → verify (kiro)
+```
+
 ### Running Workflows
 
 ```bash
@@ -133,6 +167,10 @@ ai-proxy
 [claude]> /workflow feature implement user authentication with JWT
 [claude]> /workflow bugfix login returns 500 when user not found
 [claude]> /workflow refactor split main.go into separate modules
+[claude]> /workflow api create CRUD endpoints for products
+[claude]> /workflow test write unit tests for auth module
+[claude]> /workflow docs generate API documentation
+[claude]> /workflow docker containerize the application
 ```
 
 ### Workflow Output

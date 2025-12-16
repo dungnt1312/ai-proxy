@@ -285,6 +285,175 @@ Make changes carefully.`,
 			},
 		},
 	},
+	"api": {
+		Name: "REST API Development",
+		Stages: []Stage{
+			{
+				Name:       "plan",
+				Backend:    "gemini",
+				OutputFile: "api-plan.md",
+				Prompt: `Design a REST API for: {{.Requirement}}
+
+{{.ProjectContext}}
+
+Output:
+# API Design
+## Endpoints
+- METHOD /path - description
+## Data Models
+## Authentication
+## Error Handling`,
+			},
+			{
+				Name:       "openapi",
+				Backend:    "kiro",
+				OutputFile: "openapi.yaml",
+				Prompt: `Create OpenAPI 3.0 spec from this design:
+
+{{.PlanContent}}
+
+Output valid YAML only.`,
+			},
+			{
+				Name:        "code",
+				Backend:     "claude",
+				Interactive: true,
+				Prompt: `Implement this API:
+
+{{.PlanContent}}
+
+Requirement: {{.Requirement}}`,
+			},
+			{
+				Name:       "verify",
+				Backend:    "auto",
+				OutputFile: "verify.md",
+			},
+		},
+	},
+	"test": {
+		Name: "Write Tests",
+		Stages: []Stage{
+			{
+				Name:       "analyze",
+				Backend:    "gemini",
+				OutputFile: "test-plan.md",
+				Prompt: `Analyze code and plan tests for: {{.Requirement}}
+
+{{.ProjectContext}}
+
+Output:
+# Test Plan
+## Files to Test
+## Test Cases
+- test case 1
+- test case 2
+## Edge Cases`,
+			},
+			{
+				Name:        "write",
+				Backend:     "claude",
+				Interactive: true,
+				Prompt: `Write tests based on this plan:
+
+{{.PlanContent}}
+
+Requirement: {{.Requirement}}
+
+Create comprehensive unit tests.`,
+			},
+			{
+				Name:       "verify",
+				Backend:    "auto",
+				OutputFile: "verify.md",
+			},
+		},
+	},
+	"docs": {
+		Name: "Generate Documentation",
+		Stages: []Stage{
+			{
+				Name:       "scan",
+				Backend:    "gemini",
+				OutputFile: "doc-outline.md",
+				Prompt: `Analyze project and create documentation outline:
+
+{{.ProjectContext}}
+
+Requirement: {{.Requirement}}
+
+Output:
+# Documentation Outline
+## Overview
+## Installation
+## Usage
+## API Reference
+## Examples`,
+			},
+			{
+				Name:        "write",
+				Backend:     "claude",
+				Interactive: true,
+				Prompt: `Write documentation based on this outline:
+
+{{.PlanContent}}
+
+Requirement: {{.Requirement}}
+
+Create clear, comprehensive docs.`,
+			},
+		},
+	},
+	"docker": {
+		Name: "Dockerize Application",
+		Stages: []Stage{
+			{
+				Name:       "analyze",
+				Backend:    "gemini",
+				OutputFile: "docker-plan.md",
+				Prompt: `Analyze project for containerization:
+
+{{.ProjectContext}}
+
+Requirement: {{.Requirement}}
+
+Output:
+# Docker Plan
+## Base Image
+## Dependencies
+## Build Steps
+## Ports
+## Environment Variables
+## Volumes`,
+			},
+			{
+				Name:        "create",
+				Backend:     "claude",
+				Interactive: true,
+				Prompt: `Create Docker configuration:
+
+{{.PlanContent}}
+
+Requirement: {{.Requirement}}
+
+Create Dockerfile and docker-compose.yml if needed.`,
+			},
+			{
+				Name:       "verify",
+				Backend:    "kiro",
+				OutputFile: "docker-review.md",
+				Prompt: `Review Docker configuration for:
+- Security best practices
+- Image size optimization
+- Multi-stage builds
+- Proper layer caching
+
+{{.DiffContent}}
+
+Output issues and suggestions.`,
+			},
+		},
+	},
 }
 
 func (wf *Workflow) Run(requirement string) error {
