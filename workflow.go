@@ -17,6 +17,8 @@ type Stage struct {
 	Interactive bool   `json:"interactive"`
 	ReviewLoop  bool   `json:"reviewLoop"`
 	Skippable   bool   `json:"skippable,omitempty"`
+	Parallel    string `json:"parallel,omitempty"`
+	Condition   string `json:"condition,omitempty"`
 }
 
 type Workflow struct {
@@ -459,7 +461,12 @@ Output issues and suggestions.`,
 	},
 }
 
+var dryRun bool
+
 func (wf *Workflow) Run(requirement string) error {
+	if dryRun {
+		return wf.DryRun(requirement)
+	}
 	baseDir := ".workflow"
 	timestamp := time.Now().Format("20060102_150405")
 	workDir := filepath.Join(baseDir, timestamp)
@@ -494,6 +501,7 @@ func (wf *Workflow) Run(requirement string) error {
 	fmt.Printf("%s Directory: %s\n", dim("│"), workDir)
 	fmt.Printf("%s Context: scanned project\n\n", dim("│"))
 
+	timer := NewStageTimer()
 	i := 0
 	maxReviewLoops := 3
 	reviewLoopCount := 0
@@ -510,6 +518,16 @@ func (wf *Workflow) Run(requirement string) error {
 				i++
 				continue
 			}
+		}
+
+		progress := progressBar(i, len(wf.Stages), 20)
+		eta := timer.EstimateRemaining(i, len(wf.Stages))
+		fmt.Printf("%s %s ETA: %s\n", dim("│"), dim(progress), dim(eta))
+
+		if stage.Condition != "" && !checkCondition(stage.Condition, ctx) {
+			fmt.Printf("%s [Stage %d/%d] %s - %s\n", dim("○"), i+1, len(wf.Stages), stage.Name, dim("skipped (condition not met)"))
+			i++
+			continue
 		}
 
 		fmt.Printf("%s [Stage %d/%d] %s (%s)\n", cyan("●"), i+1, len(wf.Stages), stage.Name, stage.Backend)
@@ -564,6 +582,7 @@ func (wf *Workflow) Run(requirement string) error {
 		}
 
 		ctx.log("### Output\n```\n%s\n```\n\n", truncate(result, 2000))
+		timer.StageComplete()
 		fmt.Printf("%s Stage completed\n\n", green("✓"))
 
 		saveCheckpoint(ctx, wf.Name, i)
@@ -596,7 +615,7 @@ func (wf *Workflow) Run(requirement string) error {
 		i++
 	}
 
-	fmt.Printf("%s Workflow completed!\n", green("✓"))
+	fmt.Printf("%s Workflow completed! (Total: %s)\n", green("✓"), formatDuration(timer.Elapsed()))
 	fmt.Printf("%s Files in: %s/\n", dim("📁"), workDir)
 
 	files, _ := os.ReadDir(workDir)
@@ -728,14 +747,78 @@ func listWorkflows() {
 	for name, wf := range defaultWorkflows {
 		fmt.Printf("  %s - %s\n", green(name), wf.Name)
 		for i, s := range wf.Stages {
+			skip := ""
+			if s.Skippable {
+				skip = " [skippable]"
+			}
+			inter := ""
+			if s.Interactive {
+				inter = " (interactive)"
+			}
 			out := ""
 			if s.OutputFile != "" {
 				out = fmt.Sprintf(" → %s", s.OutputFile)
 			}
-			if s.Interactive {
-				out += " (interactive)"
-			}
-			fmt.Printf("    %d. %s (%s)%s\n", i+1, s.Name, s.Backend, out)
+			fmt.Printf("    %d. %s (%s)%s%s%s\n", i+1, s.Name, s.Backend, out, inter, skip)
 		}
 	}
+}
+
+func showWorkflowHistory() {
+	baseDir := ".workflow"
+	entries, err := os.ReadDir(baseDir)
+	if err != nil {
+		fmt.Println(dim("No workflow history"))
+		return
+	}
+
+	fmt.Println(cyan("Workflow History:"))
+	count := 0
+	for i := len(entries) - 1; i >= 0 && count < 10; i-- {
+		e := entries[i]
+		if !e.IsDir() || e.Name() == "latest" {
+			continue
+		}
+		statePath := filepath.Join(baseDir, e.Name(), "state.json")
+		if state, err := loadCheckpoint(filepath.Join(baseDir, e.Name())); err == nil {
+			fmt.Printf("  %s %s - %s (stage %d)\n", dim(e.Name()), green(state.WorkflowName), state.Requirement[:min(40, len(state.Requirement))], state.CurrentStage+1)
+		} else if _, err := os.Stat(statePath); err == nil {
+			fmt.Printf("  %s\n", dim(e.Name()))
+		}
+		count++
+	}
+	if count == 0 {
+		fmt.Println(dim("No workflow history"))
+	}
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func (wf *Workflow) DryRun(requirement string) error {
+	fmt.Printf("\n%s DRY RUN: %s\n", yellow("▶"), wf.Name)
+	fmt.Printf("%s Requirement: %s\n\n", dim("│"), requirement)
+
+	for i, stage := range wf.Stages {
+		skip := ""
+		if stage.Skippable {
+			skip = yellow(" [will ask to skip]")
+		}
+		inter := ""
+		if stage.Interactive {
+			inter = cyan(" (interactive)")
+		}
+		fmt.Printf("%s Stage %d: %s (%s)%s%s\n", dim("│"), i+1, stage.Name, stage.Backend, inter, skip)
+		if stage.OutputFile != "" {
+			fmt.Printf("%s   → %s\n", dim("│"), stage.OutputFile)
+		}
+	}
+
+	fmt.Printf("\n%s This is a dry run. No changes will be made.\n", yellow("!"))
+	fmt.Printf("%s Run without --dry-run to execute.\n", dim("│"))
+	return nil
 }

@@ -197,7 +197,16 @@ func handleCommand(input string) bool {
 			listWorkflows()
 			return true
 		}
+		if parts[1] == "history" {
+			showWorkflowHistory()
+			return true
+		}
 		wfName := parts[1]
+		if strings.HasPrefix(wfName, "--dry-run") && len(parts) > 2 {
+			dryRun = true
+			wfName = parts[2]
+			parts = append(parts[:1], parts[2:]...)
+		}
 		wf := getWorkflow(wfName)
 		if wf == nil {
 			fmt.Printf("%s Unknown workflow: %s\n", yellow("!"), wfName)
@@ -216,6 +225,7 @@ func handleCommand(input string) bool {
 		if err := wf.Run(req); err != nil {
 			fmt.Printf("%s %v\n", red("Error:"), err)
 		}
+		dryRun = false
 		return true
 
 	case "/help", "/?":
@@ -224,9 +234,10 @@ func handleCommand(input string) bool {
 		fmt.Println("  /switch <name>       - Switch backend")
 		fmt.Println("  /list                - List backends")
 		fmt.Println("  /workflow <name>     - Run workflow")
+		fmt.Println("  /workflow history    - Show workflow history")
+		fmt.Println("  /workflow --dry-run <name> - Preview workflow")
 		fmt.Println("  /resume              - Resume last workflow")
 		fmt.Println("  /clear               - Clear history")
-		fmt.Println("  /history             - Show history")
 		fmt.Println("  /config              - Show config path")
 		fmt.Println("  quit                 - Exit")
 		return true
