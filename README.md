@@ -404,6 +404,21 @@ ai-proxy
 
 Skills are reusable prompt templates that can be run standalone or used in workflows.
 
+### Built-in Skills
+
+| Skill | Description | Backend |
+|-------|-------------|---------|
+| `code-review` | Review code changes for quality | kiro |
+| `security-audit` | Audit code for security vulnerabilities | kiro |
+| `explain` | Explain code or concepts in simple terms | gemini |
+| `frontend-design` | Create distinctive, production-grade UI | claude |
+| `mcp-builder` | Guide for creating MCP servers | claude |
+| `skill-creator` | Create new skills | kiro |
+| `project-skill-creator` | Analyze project and create project-specific skills | kiro |
+| `git-commit` | Generate conventional commit messages | gemini |
+| `refactor` | Code quality analysis and improvements | kiro |
+| `test-generator` | Generate comprehensive unit tests | claude |
+
 ### Skill Structure
 
 ```
@@ -448,6 +463,9 @@ tags: [review, quality]
 
 # Run a skill
 /skill code-review --diff="$(git diff)"
+/skill frontend-design --requirement="Landing page for SaaS" --style=minimal
+/skill git-commit --diff="$(git diff)"
+/skill project-skill-creator --purpose="Create API endpoints following project patterns"
 
 # Show skill info
 /skill info code-review
