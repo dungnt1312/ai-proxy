@@ -50,7 +50,7 @@ func buildArgs(prompt string) []string {
 	}
 
 	if current == "kiro" {
-		args = append(args, "--no-interactive")
+		args = append(args, "--no-interactive", "--trust-all-tools")
 	}
 
 	return args
@@ -187,7 +187,11 @@ func handleCommand(input string) bool {
 		return true
 
 	case "/resume":
-		if err := resumeWorkflow(); err != nil {
+		var folder string
+		if len(parts) > 1 {
+			folder = parts[1]
+		}
+		if err := resumeWorkflow(folder); err != nil {
 			fmt.Printf("%s %v\n", red("Error:"), err)
 		}
 		return true
@@ -236,7 +240,7 @@ func handleCommand(input string) bool {
 		fmt.Println("  /workflow <name>     - Run workflow")
 		fmt.Println("  /workflow history    - Show workflow history")
 		fmt.Println("  /workflow --dry-run <name> - Preview workflow")
-		fmt.Println("  /resume              - Resume last workflow")
+		fmt.Println("  /resume [folder]     - Resume workflow (latest or specific)")
 		fmt.Println("  /clear               - Clear history")
 		fmt.Println("  /config              - Show config path")
 		fmt.Println("  quit                 - Exit")

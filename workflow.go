@@ -19,9 +19,11 @@ type Stage struct {
 	Skippable   bool   `json:"skippable,omitempty"`
 	Parallel    string `json:"parallel,omitempty"`
 	Condition   string `json:"condition,omitempty"`
+	MaxAttempts int    `json:"maxAttempts,omitempty"` // Default 3 if not set
 }
 
 type Workflow struct {
+	Key    string  `json:"key"`
 	Name   string  `json:"name"`
 	Stages []Stage `json:"stages"`
 }
@@ -503,12 +505,17 @@ func (wf *Workflow) Run(requirement string) error {
 
 	timer := NewStageTimer()
 	i := 0
-	maxReviewLoops := 3
 	reviewLoopCount := 0
 
 	for i < len(wf.Stages) {
 		stage := wf.Stages[i]
 		ctx.CurrentIdx = i
+
+		// Get maxAttempts (default 3)
+		maxAttempts := stage.MaxAttempts
+		if maxAttempts <= 0 {
+			maxAttempts = 3
+		}
 
 		if stage.ReviewLoop && reviewLoopCount == 0 {
 			reviewContent := ctx.Results["code-review"]
@@ -585,31 +592,50 @@ func (wf *Workflow) Run(requirement string) error {
 		timer.StageComplete()
 		fmt.Printf("%s Stage completed\n\n", green("✓"))
 
-		saveCheckpoint(ctx, wf.Name, i)
+		saveCheckpoint(ctx, wf.Key, i)
 
 		if stage.Name == "code-review" {
 			if strings.Contains(strings.ToUpper(result), "NEEDS_CHANGES") {
 				reviewLoopCount++
-				if reviewLoopCount >= maxReviewLoops {
-					fmt.Printf("%s Max review loops reached (%d)\n", yellow("!"), maxReviewLoops)
+				if reviewLoopCount >= maxAttempts {
+					fmt.Printf("%s Max review attempts reached (%d/%d)\n", yellow("!"), reviewLoopCount, maxAttempts)
+					fmt.Printf("%s Continue reviewing? [y/N] or [s]kip: ", yellow("?"))
+					var input string
+					fmt.Scanln(&input)
+					input = strings.ToLower(strings.TrimSpace(input))
+					if input == "y" {
+						reviewLoopCount = 0 // Reset counter
+						i++ // Go to fix stage
+						continue
+					} else if input == "s" {
+						fmt.Printf("%s Skipping fix stage\n\n", dim("○"))
+						i += 2 // Skip fix stage
+						continue
+					} else {
+						fmt.Printf("%s Stopping workflow\n", yellow("!"))
+						break
+					}
 				} else {
-					fmt.Printf("%s Changes needed, going to fix stage (loop %d/%d)\n\n", yellow("↻"), reviewLoopCount, maxReviewLoops)
+					fmt.Printf("%s Changes needed, going to fix stage (attempt %d/%d)\n\n", yellow("↻"), reviewLoopCount, maxAttempts)
 					i++ // Go to fix stage
 					continue
 				}
 			} else {
 				fmt.Printf("%s Code approved!\n\n", green("✓"))
+				reviewLoopCount = 0
 			}
 		}
 
-		if stage.ReviewLoop && reviewLoopCount > 0 && reviewLoopCount < maxReviewLoops {
+		if stage.ReviewLoop && reviewLoopCount > 0 {
+			// Find code-review stage and go back
 			for j, s := range wf.Stages {
 				if s.Name == "code-review" {
 					i = j
-					fmt.Printf("%s Back to code review\n\n", cyan("↻"))
-					continue
+					fmt.Printf("%s Back to code review (attempt %d)\n\n", cyan("↻"), reviewLoopCount)
+					break
 				}
 			}
+			continue
 		}
 
 		i++
@@ -626,8 +652,21 @@ func (wf *Workflow) Run(requirement string) error {
 	return nil
 }
 
-func resumeWorkflow() error {
-	workDir := findLatestWorkflow()
+func resumeWorkflow(folder string) error {
+	var workDir string
+	if folder != "" {
+		// Check if it's a full path or just folder name
+		if filepath.IsAbs(folder) {
+			workDir = folder
+		} else {
+			workDir = filepath.Join(".workflow", folder)
+		}
+		if _, err := os.Stat(workDir); os.IsNotExist(err) {
+			return fmt.Errorf("workflow folder not found: %s", workDir)
+		}
+	} else {
+		workDir = findLatestWorkflow()
+	}
 	if workDir == "" {
 		return fmt.Errorf("no workflow to resume")
 	}
@@ -656,19 +695,139 @@ func resumeWorkflow() error {
 		BeforeSnapshot: takeSnapshot(),
 	}
 
-	for i := state.CurrentStage + 1; i < len(wf.Stages); i++ {
+	timer := NewStageTimer()
+	reviewLoopCount := state.ReviewAttempts
+	i := state.CurrentStage + 1
+
+	for i < len(wf.Stages) {
 		stage := wf.Stages[i]
+		ctx.CurrentIdx = i
+
+		maxAttempts := stage.MaxAttempts
+		if maxAttempts <= 0 {
+			maxAttempts = 3
+		}
+
+		if stage.ReviewLoop && reviewLoopCount == 0 {
+			reviewContent := ctx.Results["code-review"]
+			if strings.Contains(strings.ToUpper(reviewContent), "APPROVED") &&
+				!strings.Contains(strings.ToUpper(reviewContent), "NEEDS_CHANGES") {
+				fmt.Printf("%s Skipping fix (code approved)\n\n", green("✓"))
+				i++
+				continue
+			}
+		}
+
+		progress := progressBar(i, len(wf.Stages), 20)
+		eta := timer.EstimateRemaining(i, len(wf.Stages))
+		fmt.Printf("%s %s ETA: %s\n", dim("│"), dim(progress), dim(eta))
+
+		if stage.Condition != "" && !checkCondition(stage.Condition, ctx) {
+			fmt.Printf("%s [Stage %d/%d] %s - %s\n", dim("○"), i+1, len(wf.Stages), stage.Name, dim("skipped (condition not met)"))
+			i++
+			continue
+		}
+
 		fmt.Printf("%s [Stage %d/%d] %s (%s)\n", cyan("●"), i+1, len(wf.Stages), stage.Name, stage.Backend)
 
-		result, _ := runStage(&stage, ctx)
+		if stage.OutputFile != "" {
+			fmt.Printf("%s Output: %s\n", dim("│"), filepath.Join(workDir, stage.OutputFile))
+		}
+
+		if stage.Skippable {
+			fmt.Printf("%s Skip this stage? [y/N]: ", yellow("?"))
+			var input string
+			fmt.Scanln(&input)
+			if strings.ToLower(strings.TrimSpace(input)) == "y" {
+				fmt.Printf("%s Skipped\n\n", dim("○"))
+				i++
+				continue
+			}
+		}
+
+		ctx.log("## Stage %d: %s (resumed, loop %d)\n\n", i+1, stage.Name, reviewLoopCount)
+
+		var result string
+
+		if stage.Backend == "auto" && stage.Name == "verify" {
+			afterSnapshot := takeSnapshot()
+			diffContent := ctx.BeforeSnapshot.Diff(afterSnapshot)
+			ctx.Results["diff"] = diffContent
+			os.WriteFile(filepath.Join(workDir, "diff.md"), []byte(diffContent), 0644)
+			fmt.Printf("%s Generated diff of changes\n", dim("│"))
+
+			verifyOutput, passed := runVerifyStage(workDir)
+			result = verifyOutput
+			ctx.Results["verify"] = result
+			if !passed {
+				fmt.Printf("%s Some checks failed, will be included in review\n", yellow("!"))
+			}
+		} else {
+			var err error
+			result, err = runStage(&stage, ctx)
+			if err != nil {
+				return fmt.Errorf("stage %s failed: %w", stage.Name, err)
+			}
+		}
+
 		ctx.Results[stage.Name] = result
 
 		if stage.OutputFile != "" {
 			outPath := filepath.Join(workDir, fmt.Sprintf("%d.%s", i, stage.OutputFile))
 			os.WriteFile(outPath, []byte(stripANSI(result)), 0644)
+			fmt.Printf("%s Saved: %s\n", green("✓"), outPath)
 		}
+
+		ctx.log("### Output\n```\n%s\n```\n\n", truncate(result, 2000))
+		timer.StageComplete()
 		fmt.Printf("%s Stage completed\n\n", green("✓"))
-		saveCheckpoint(ctx, wf.Name, i)
+
+		saveCheckpointWithAttempts(ctx, wf.Key, i, reviewLoopCount)
+
+		if stage.Name == "code-review" {
+			if strings.Contains(strings.ToUpper(result), "NEEDS_CHANGES") {
+				reviewLoopCount++
+				if reviewLoopCount >= maxAttempts {
+					fmt.Printf("%s Max review attempts reached (%d/%d)\n", yellow("!"), reviewLoopCount, maxAttempts)
+					fmt.Printf("%s Continue reviewing? [y/N] or [s]kip: ", yellow("?"))
+					var input string
+					fmt.Scanln(&input)
+					input = strings.ToLower(strings.TrimSpace(input))
+					if input == "y" {
+						reviewLoopCount = 0
+						i++
+						continue
+					} else if input == "s" {
+						fmt.Printf("%s Skipping fix stage\n\n", dim("○"))
+						i += 2
+						continue
+					} else {
+						fmt.Printf("%s Stopping workflow\n", yellow("!"))
+						break
+					}
+				} else {
+					fmt.Printf("%s Changes needed, going to fix stage (attempt %d/%d)\n\n", yellow("↻"), reviewLoopCount, maxAttempts)
+					i++
+					continue
+				}
+			} else {
+				fmt.Printf("%s Code approved!\n\n", green("✓"))
+				reviewLoopCount = 0
+			}
+		}
+
+		if stage.ReviewLoop && reviewLoopCount > 0 {
+			for j, s := range wf.Stages {
+				if s.Name == "code-review" {
+					i = j
+					fmt.Printf("%s Back to code review (attempt %d)\n\n", cyan("↻"), reviewLoopCount)
+					break
+				}
+			}
+			continue
+		}
+
+		i++
 	}
 
 	fmt.Printf("%s Workflow resumed and completed!\n", green("✓"))
@@ -751,6 +910,7 @@ func runStage(stage *Stage, ctx *WorkflowContext) (string, error) {
 
 func getWorkflow(name string) *Workflow {
 	if wf, ok := defaultWorkflows[name]; ok {
+		wf.Key = name
 		return &wf
 	}
 	return nil

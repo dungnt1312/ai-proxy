@@ -7,20 +7,26 @@ import (
 )
 
 type WorkflowState struct {
-	WorkflowName string            `json:"workflow"`
-	Requirement  string            `json:"requirement"`
-	CurrentStage int               `json:"currentStage"`
-	Results      map[string]string `json:"results"`
-	WorkDir      string            `json:"workDir"`
+	WorkflowName   string            `json:"workflow"`
+	Requirement    string            `json:"requirement"`
+	CurrentStage   int               `json:"currentStage"`
+	Results        map[string]string `json:"results"`
+	WorkDir        string            `json:"workDir"`
+	ReviewAttempts int               `json:"reviewAttempts,omitempty"`
 }
 
 func saveCheckpoint(ctx *WorkflowContext, wfName string, stageIdx int) {
+	saveCheckpointWithAttempts(ctx, wfName, stageIdx, 0)
+}
+
+func saveCheckpointWithAttempts(ctx *WorkflowContext, wfName string, stageIdx int, reviewAttempts int) {
 	state := WorkflowState{
-		WorkflowName: wfName,
-		Requirement:  ctx.Requirement,
-		CurrentStage: stageIdx,
-		Results:      ctx.Results,
-		WorkDir:      ctx.WorkDir,
+		WorkflowName:   wfName,
+		Requirement:    ctx.Requirement,
+		CurrentStage:   stageIdx,
+		Results:        ctx.Results,
+		WorkDir:        ctx.WorkDir,
+		ReviewAttempts: reviewAttempts,
 	}
 	data, _ := json.MarshalIndent(state, "", "  ")
 	os.WriteFile(filepath.Join(ctx.WorkDir, "state.json"), data, 0644)

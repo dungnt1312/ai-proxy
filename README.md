@@ -74,7 +74,7 @@ ai-proxy --init
 | `/switch <backend>` | Switch backend (claude, kiro, gemini, cursor) |
 | `/list` | List available backends |
 | `/workflow <name>` | Run a multi-agent workflow |
-| `/resume` | Resume last interrupted workflow |
+| `/resume [folder]` | Resume workflow (latest or specific folder) |
 | `/clear` | Clear conversation history |
 | `/help` | Show all commands |
 | `quit` | Exit |
@@ -279,6 +279,7 @@ Initialize with `ai-proxy --init`, then customize:
 | `outputFile` | string | Save output to this file (empty = no save) |
 | `interactive` | bool | Run in interactive mode (for coding tasks) |
 | `reviewLoop` | bool | Loop back if review fails |
+| `maxAttempts` | int | Max review loop attempts before asking (default: 3) |
 
 ### Prompt Variables
 
@@ -386,6 +387,12 @@ ai-proxy
 ai-proxy
 [claude]> /resume
 # Continues from last completed stage
+
+# Resume specific workflow by folder name
+[claude]> /resume 20251216_231305
+
+# Or use 'latest' symlink
+[claude]> /resume latest
 ```
 
 ## License
