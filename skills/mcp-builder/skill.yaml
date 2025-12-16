@@ -1,0 +1,25 @@
+name: mcp-builder
+description: Guide for creating MCP (Model Context Protocol) servers that enable LLMs to interact with external services. Use for building MCP servers in TypeScript or Python.
+version: 1.0.0
+author: anthropic (adapted)
+
+stage:
+  backend: claude
+  model: ""
+  interactive: true
+  outputFile: ""
+
+inputs:
+  - name: service
+    description: External service/API to integrate
+    required: true
+  - name: language
+    description: Implementation language (typescript, python)
+    required: false
+    default: typescript
+  - name: transport
+    description: Transport type (http, stdio)
+    required: false
+    default: stdio
+
+tags: [mcp, server, api, integration, typescript, python]

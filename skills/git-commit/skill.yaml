@@ -1,0 +1,20 @@
+name: git-commit
+description: Generate conventional commit messages from git diff. Use when you need to create a well-formatted commit message.
+version: 1.0.0
+author: ai-proxy
+
+stage:
+  backend: gemini
+  model: ""
+  interactive: false
+  outputFile: ""
+
+inputs:
+  - name: diff
+    description: Git diff output
+    required: true
+  - name: type
+    description: Commit type (feat, fix, docs, refactor, test, chore)
+    required: false
+
+tags: [git, commit, conventional]

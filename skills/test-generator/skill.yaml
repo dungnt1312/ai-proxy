@@ -1,0 +1,24 @@
+name: test-generator
+description: Generate unit tests for code. Use when you need to create comprehensive test coverage.
+version: 1.0.0
+author: ai-proxy
+
+stage:
+  backend: claude
+  model: ""
+  interactive: false
+  outputFile: ""
+
+inputs:
+  - name: code
+    description: Code to test
+    required: true
+  - name: framework
+    description: Test framework (jest, pytest, go, vitest)
+    required: false
+  - name: coverage
+    description: Coverage focus (unit, integration, e2e)
+    required: false
+    default: unit
+
+tags: [test, unit-test, tdd, coverage]

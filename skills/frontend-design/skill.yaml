@@ -1,0 +1,24 @@
+name: frontend-design
+description: Create distinctive, production-grade frontend interfaces with high design quality. Use for web components, pages, dashboards, React components, HTML/CSS layouts.
+version: 1.0.0
+author: anthropic (adapted)
+
+stage:
+  backend: claude
+  model: ""
+  interactive: true
+  outputFile: ""
+
+inputs:
+  - name: requirement
+    description: What to build (component, page, app)
+    required: true
+  - name: framework
+    description: Framework to use (html, react, vue)
+    required: false
+    default: html
+  - name: style
+    description: Aesthetic direction (minimal, brutalist, retro, luxury, playful)
+    required: false
+
+tags: [frontend, design, ui, web, react, html, css]

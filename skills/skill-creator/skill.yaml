@@ -1,0 +1,20 @@
+name: skill-creator
+description: Guide for creating effective skills for ai-proxy. Use when users want to create a new skill that extends capabilities with specialized knowledge or workflows.
+version: 1.0.0
+author: anthropic (adapted)
+
+stage:
+  backend: kiro
+  model: ""
+  interactive: false
+  outputFile: ""
+
+inputs:
+  - name: purpose
+    description: What the skill should do
+    required: true
+  - name: name
+    description: Skill name (lowercase, hyphenated)
+    required: false
+
+tags: [skill, meta, create, template]

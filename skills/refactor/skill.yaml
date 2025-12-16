@@ -1,0 +1,23 @@
+name: refactor
+description: Analyze code and suggest refactoring improvements. Use for code quality, readability, and maintainability improvements.
+version: 1.0.0
+author: ai-proxy
+
+stage:
+  backend: kiro
+  model: ""
+  interactive: false
+  outputFile: refactor.md
+
+inputs:
+  - name: code
+    description: Code to refactor
+    required: true
+  - name: focus
+    description: Focus area (performance, readability, dry, solid)
+    required: false
+  - name: language
+    description: Programming language
+    required: false
+
+tags: [refactor, code-quality, clean-code]
