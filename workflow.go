@@ -11,11 +11,12 @@ import (
 type Stage struct {
 	Name        string `json:"name"`
 	Backend     string `json:"backend"`
-	Model       string `json:"model,omitempty"` // e.g., "opus", "sonnet", "gemini-2.0-flash"
+	Model       string `json:"model,omitempty"`
 	Prompt      string `json:"prompt"`
 	OutputFile  string `json:"outputFile"`
 	Interactive bool   `json:"interactive"`
 	ReviewLoop  bool   `json:"reviewLoop"`
+	Skippable   bool   `json:"skippable,omitempty"`
 }
 
 type Workflow struct {
@@ -69,6 +70,7 @@ Be thorough but concise. Consider existing project structure.`,
 				Name:       "security",
 				Backend:    "kiro",
 				OutputFile: "security.md",
+				Skippable:  true,
 				Prompt: `Review this plan for security issues:
 
 {{.PlanContent}}
@@ -308,6 +310,7 @@ Output:
 				Name:       "openapi",
 				Backend:    "kiro",
 				OutputFile: "openapi.yaml",
+				Skippable:  true,
 				Prompt: `Create OpenAPI 3.0 spec from this design:
 
 {{.PlanContent}}
@@ -513,6 +516,17 @@ func (wf *Workflow) Run(requirement string) error {
 
 		if stage.OutputFile != "" {
 			fmt.Printf("%s Output: %s\n", dim("│"), filepath.Join(workDir, stage.OutputFile))
+		}
+
+		if stage.Skippable {
+			fmt.Printf("%s Skip this stage? [y/N]: ", yellow("?"))
+			var input string
+			fmt.Scanln(&input)
+			if strings.ToLower(strings.TrimSpace(input)) == "y" {
+				fmt.Printf("%s Skipped\n\n", dim("○"))
+				i++
+				continue
+			}
 		}
 
 		ctx.log("## Stage %d: %s (loop %d)\n\n", i+1, stage.Name, reviewLoopCount)
