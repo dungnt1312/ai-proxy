@@ -239,9 +239,19 @@ func handleCommand(input string) bool {
 		fmt.Println("  /workflow history    - Show workflow history")
 		fmt.Println("  /workflow --dry-run <name> - Preview workflow")
 		fmt.Println("  /resume [folder]     - Resume workflow (latest or specific)")
+		fmt.Println("  /skills              - List available skills")
+		fmt.Println("  /skill <name>        - Run a skill")
 		fmt.Println("  /clear               - Clear history")
 		fmt.Println("  /config              - Show config path")
 		fmt.Println("  quit                 - Exit")
+		return true
+
+	case "/skills":
+		listSkills()
+		return true
+
+	case "/skill":
+		runSkillCommand(parts[1:])
 		return true
 	}
 	return false
@@ -249,6 +259,7 @@ func handleCommand(input string) bool {
 
 func runInteractive() {
 	loadProjectConfig()
+	loadSkills()
 
 	fmt.Println(green("🔀 AI Proxy CLI"))
 	fmt.Printf("Backend: %s %s\n\n", cyan(config.Backends[current].Name), dim("(/? for help)"))
@@ -258,7 +269,7 @@ func runInteractive() {
 	line.SetCtrlCAborts(true)
 
 	// Tab completion
-	commands := []string{"/init", "/switch", "/list", "/workflow", "/resume", "/clear", "/config", "/help", "quit"}
+	commands := []string{"/init", "/switch", "/list", "/workflow", "/resume", "/skills", "/skill", "/clear", "/config", "/help", "quit"}
 	workflows := []string{"feature", "bugfix", "refactor", "api", "test", "docs", "docker", "history", "--dry-run"}
 	backends := []string{"claude", "kiro", "gemini", "cursor"}
 
@@ -281,6 +292,16 @@ func runInteractive() {
 			for _, wf := range workflows {
 				if strings.HasPrefix(wf, prefix) {
 					completions = append(completions, strings.Split(line, " ")[0]+" "+wf)
+				}
+			}
+		}
+
+		// Complete /skill <name>
+		if strings.HasPrefix(line, "/skill ") {
+			prefix := strings.TrimPrefix(line, "/skill ")
+			for name := range skills {
+				if strings.HasPrefix(name, prefix) {
+					completions = append(completions, "/skill "+name)
 				}
 			}
 		}

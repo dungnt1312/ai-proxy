@@ -75,6 +75,11 @@ ai-proxy --init
 | `/list` | List available backends |
 | `/workflow <name>` | Run a multi-agent workflow |
 | `/resume [folder]` | Resume workflow (latest or specific folder) |
+| `/skills` | List available skills |
+| `/skill <name>` | Run a skill |
+| `/skill install <url>` | Install skill from GitHub |
+| `/skill remove <name>` | Remove a skill |
+| `/skill info <name>` | Show skill details |
 | `/clear` | Clear conversation history |
 | `/help` | Show all commands |
 | `quit` | Exit |
@@ -393,6 +398,87 @@ ai-proxy
 
 # Or use 'latest' symlink
 [claude]> /resume latest
+```
+
+## Skills
+
+Skills are reusable prompt templates that can be run standalone or used in workflows.
+
+### Skill Structure
+
+```
+~/.ai-proxy/skills/
+├── code-review/
+│   ├── skill.yaml    # Metadata and config
+│   └── prompt.md     # Prompt template
+├── security-audit/
+└── explain/
+```
+
+### skill.yaml Example
+
+```yaml
+name: code-review
+description: Review code changes for quality
+version: 1.0.0
+author: ai-proxy
+
+stage:
+  backend: kiro
+  model: ""
+  interactive: false
+  outputFile: review.md
+
+inputs:
+  - name: diff
+    description: Code diff to review
+    required: true
+  - name: focus
+    description: Areas to focus on
+    required: false
+
+tags: [review, quality]
+```
+
+### Using Skills
+
+```bash
+# List skills
+/skills
+
+# Run a skill
+/skill code-review --diff="$(git diff)"
+
+# Show skill info
+/skill info code-review
+
+# Install from GitHub
+/skill install https://github.com/user/repo/tree/main/skills/my-skill
+
+# Remove skill
+/skill remove my-skill
+```
+
+### Skills in Workflows
+
+Reference skills in workflow stages:
+
+```json
+{
+  "workflows": {
+    "my-workflow": {
+      "stages": [
+        {
+          "name": "review",
+          "skill": "code-review",
+          "inputs": {
+            "diff": "{{.DiffContent}}"
+          }
+        }
+      ]
+    }
+  }
+}
 ```
 
 ## License

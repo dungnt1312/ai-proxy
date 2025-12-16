@@ -9,17 +9,19 @@ import (
 )
 
 type Stage struct {
-	Name        string `json:"name"`
-	Backend     string `json:"backend"`
-	Model       string `json:"model,omitempty"`
-	Prompt      string `json:"prompt"`
-	OutputFile  string `json:"outputFile"`
-	Interactive bool   `json:"interactive"`
-	ReviewLoop  bool   `json:"reviewLoop"`
-	Skippable   bool   `json:"skippable,omitempty"`
-	Parallel    string `json:"parallel,omitempty"`
-	Condition   string `json:"condition,omitempty"`
-	MaxAttempts int    `json:"maxAttempts,omitempty"` // Default 3 if not set
+	Name        string            `json:"name"`
+	Backend     string            `json:"backend"`
+	Model       string            `json:"model,omitempty"`
+	Prompt      string            `json:"prompt"`
+	OutputFile  string            `json:"outputFile"`
+	Interactive bool              `json:"interactive"`
+	ReviewLoop  bool              `json:"reviewLoop"`
+	Skippable   bool              `json:"skippable,omitempty"`
+	Parallel    string            `json:"parallel,omitempty"`
+	Condition   string            `json:"condition,omitempty"`
+	MaxAttempts int               `json:"maxAttempts,omitempty"` // Default 3 if not set
+	Skill       string            `json:"skill,omitempty"`       // Reference to a skill
+	Inputs      map[string]string `json:"inputs,omitempty"`      // Inputs for skill
 }
 
 type Workflow struct {
@@ -852,6 +854,33 @@ func findOutputFile(workDir, name string) []byte {
 }
 
 func runStage(stage *Stage, ctx *WorkflowContext) (string, error) {
+	// If stage references a skill, use the skill
+	if stage.Skill != "" {
+		skill := getSkill(stage.Skill)
+		if skill == nil {
+			return "", fmt.Errorf("skill not found: %s", stage.Skill)
+		}
+
+		// Build inputs from stage.Inputs with variable substitution
+		inputs := make(map[string]string)
+		for k, v := range stage.Inputs {
+			v = strings.ReplaceAll(v, "{{.Requirement}}", ctx.Requirement)
+			v = strings.ReplaceAll(v, "{{.DiffContent}}", ctx.Results["diff"])
+			v = strings.ReplaceAll(v, "{{.ProjectContext}}", ctx.Results["project-context"])
+			inputs[k] = v
+		}
+
+		// Override skill settings if stage specifies them
+		if stage.Backend != "" {
+			skill.Stage.Backend = stage.Backend
+		}
+		if stage.Model != "" {
+			skill.Stage.Model = stage.Model
+		}
+
+		return skill.Run(inputs, ctx)
+	}
+
 	prompt := stage.Prompt
 	prompt = strings.ReplaceAll(prompt, "{{.Requirement}}", ctx.Requirement)
 	prompt = strings.ReplaceAll(prompt, "{{.ProjectContext}}", ctx.Results["project-context"])
