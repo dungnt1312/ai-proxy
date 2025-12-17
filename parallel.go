@@ -43,6 +43,7 @@ func checkCondition(cond string, ctx *WorkflowContext) bool {
 	return true
 }
 
+// ParallelResult is the outcome of running a stage in a parallel stage group.
 type ParallelResult struct {
 	Name   string
 	Result string

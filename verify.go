@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// VerifyResult is the outcome of running repository verification checks (build/vet/test, etc.).
+// Output is formatted as Markdown for inclusion in workflow artifacts.
 type VerifyResult struct {
 	Passed bool
 	Output string

@@ -74,6 +74,8 @@ ai-proxy --init
 | `/switch <backend>` | Switch backend (claude, kiro, gemini, cursor) |
 | `/list` | List available backends |
 | `/workflow <name>` | Run a multi-agent workflow |
+| `/workflow history` | Show last 10 workflow runs |
+| `/workflow --dry-run <name>` | Preview a workflow without executing |
 | `/resume [folder]` | Resume workflow (latest or specific folder) |
 | `/skills` | List available skills |
 | `/skill <name>` | Run a skill |
@@ -81,6 +83,8 @@ ai-proxy --init
 | `/skill remove <name>` | Remove a skill |
 | `/skill info <name>` | Show skill details |
 | `/clear` | Clear conversation history |
+| `/history` | Show conversation history summary |
+| `/config` | Show the path to the global config file |
 | `/help` | Show all commands |
 | `quit` | Exit |
 
@@ -497,6 +501,27 @@ Reference skills in workflow stages:
     }
   }
 }
+```
+
+## Developer API (Go)
+
+This project is a CLI (`package main`), but it exposes several exported types that define its
+workflow/skill “public API” for developers.
+
+### Key exported types
+
+- **`Config` / `BackendConfig`**: global backend configuration loaded from `~/.ai-proxy.json`.
+- **`Workflow` / `Stage` / `WorkflowContext`**: workflow definitions and runtime context.
+- **`Skill` / `SkillStage` / `SkillInput`**: reusable prompt templates loaded from skill folders.
+- **`FileSnapshot`**: snapshot + Markdown diff generator for workflow “Changes Made”.
+- **`VerifyResult`**: formatted output from auto-verification (build/vet/test).
+- **`StageTimer`**: stage timing + ETA estimation.
+
+### Reading Go docs locally
+
+```bash
+go doc ./...
+go test ./...   # runs Example... documentation snippets
 ```
 
 ## License

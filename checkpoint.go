@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 )
 
+// WorkflowState is the persisted checkpoint for a workflow run, saved as `state.json` in the run
+// directory. It allows `/resume` to continue from the last completed stage.
 type WorkflowState struct {
 	WorkflowName   string            `json:"workflow"`
 	Requirement    string            `json:"requirement"`

@@ -8,34 +8,69 @@ import (
 	"time"
 )
 
+// Stage describes a single workflow step executed by a backend (LLM CLI) or by the built-in
+// "auto" runner (used for verification).
 type Stage struct {
-	Name        string            `json:"name"`
-	Backend     string            `json:"backend"`
-	Model       string            `json:"model,omitempty"`
-	Prompt      string            `json:"prompt"`
-	OutputFile  string            `json:"outputFile"`
-	Interactive bool              `json:"interactive"`
-	ReviewLoop  bool              `json:"reviewLoop"`
-	Skippable   bool              `json:"skippable,omitempty"`
-	Parallel    string            `json:"parallel,omitempty"`
-	Condition   string            `json:"condition,omitempty"`
-	MaxAttempts int               `json:"maxAttempts,omitempty"` // Default 3 if not set
-	Skill       string            `json:"skill,omitempty"`       // Reference to a skill
-	Inputs      map[string]string `json:"inputs,omitempty"`      // Inputs for skill
+	// Name is the stage identifier (e.g. "plan", "verify", "code-review").
+	Name string `json:"name"`
+	// Backend selects which backend executes this stage:
+	// "claude", "kiro", "gemini", "cursor", or the special value "auto" (for verify).
+	Backend string `json:"backend"`
+	// Model optionally selects a model for this stage (interpreted by the backend's ModelFlag).
+	Model string `json:"model,omitempty"`
+	// Prompt is a template string. Supported placeholders include:
+	// {{.Requirement}}, {{.ProjectContext}}, {{.PlanContent}}, {{.TasksContent}},
+	// {{.SecurityContent}}, {{.DiffContent}}, {{.VerifyContent}}, {{.ReviewContent}}.
+	Prompt string `json:"prompt"`
+	// OutputFile, when non-empty, writes stage output to the workflow folder.
+	OutputFile string `json:"outputFile"`
+	// Interactive runs the backend in interactive/TTY mode (intended for implementation stages).
+	Interactive bool `json:"interactive"`
+	// ReviewLoop marks stages that participate in an approve/fix loop.
+	ReviewLoop bool `json:"reviewLoop"`
+	// Skippable prompts the user to optionally skip this stage at runtime.
+	Skippable bool `json:"skippable,omitempty"`
+	// Parallel is reserved for parallel stage grouping (currently unused by built-in workflows).
+	Parallel string `json:"parallel,omitempty"`
+	// Condition optionally skips this stage unless it evaluates to true.
+	// Supported forms include: "file:<path>", "!file:<path>", "has:<suffix>", and "go"/"node"/"docker".
+	Condition string `json:"condition,omitempty"`
+	// MaxAttempts limits how many review loops occur before prompting the user (default 3).
+	MaxAttempts int `json:"maxAttempts,omitempty"` // Default 3 if not set
+	// Skill references a named skill to execute instead of using Prompt directly.
+	Skill string `json:"skill,omitempty"` // Reference to a skill
+	// Inputs are skill inputs with template substitutions applied before execution.
+	Inputs map[string]string `json:"inputs,omitempty"` // Inputs for skill
 }
 
+// Workflow is an ordered set of stages executed for a single requirement.
 type Workflow struct {
-	Key    string  `json:"key"`
-	Name   string  `json:"name"`
+	// Key is the workflow identifier in the workflow registry (e.g. "feature").
+	Key string `json:"key"`
+	// Name is the human-friendly label shown in the UI.
+	Name string `json:"name"`
+	// Stages is the ordered list of stages to execute.
 	Stages []Stage `json:"stages"`
 }
 
+// WorkflowContext carries shared state across stages during a workflow run/resume.
+//
+// The Results map stores stage outputs by stage name, plus special keys such as:
+//   - "project-context": generated context.md content
+//   - "diff": generated diff.md content
+//   - "verify": verify stage output (when present)
 type WorkflowContext struct {
-	Requirement    string
-	WorkDir        string
-	Results        map[string]string
-	CurrentIdx     int
-	LogFile        *os.File
+	// Requirement is the user's original request for the workflow.
+	Requirement string
+	// WorkDir is the per-run folder under .workflow/ containing outputs and state.json.
+	WorkDir string
+	// Results is an in-memory map of stage-name -> output (plus special keys like "diff").
+	Results map[string]string
+	// CurrentIdx is the current stage index while running/resuming.
+	CurrentIdx int
+	// LogFile is the workflow log writer (log.md).
+	LogFile *os.File
+	// BeforeSnapshot is a snapshot used to compute a post-run diff.
 	BeforeSnapshot *FileSnapshot
 }
 
@@ -467,6 +502,10 @@ Output issues and suggestions.`,
 
 var dryRun bool
 
+// Run executes the workflow for a given requirement.
+//
+// It creates a new run folder under `.workflow/<timestamp>/`, writes artifacts (context, stage
+// outputs, diff, verify results), persists checkpoints, and optionally performs a review/fix loop.
 func (wf *Workflow) Run(requirement string) error {
 	if dryRun {
 		return wf.DryRun(requirement)
@@ -607,7 +646,7 @@ func (wf *Workflow) Run(requirement string) error {
 					input = strings.ToLower(strings.TrimSpace(input))
 					if input == "y" {
 						reviewLoopCount = 0 // Reset counter
-						i++ // Go to fix stage
+						i++                 // Go to fix stage
 						continue
 					} else if input == "s" {
 						fmt.Printf("%s Skipping fix stage\n\n", dim("○"))
@@ -1002,6 +1041,9 @@ func min(a, b int) int {
 	return b
 }
 
+// DryRun prints a preview of the stages that would be executed for the requirement.
+//
+// Dry runs do not create `.workflow/` artifacts and do not modify files.
 func (wf *Workflow) DryRun(requirement string) error {
 	fmt.Printf("\n%s DRY RUN: %s\n", yellow("▶"), wf.Name)
 	fmt.Printf("%s Requirement: %s\n\n", dim("│"), requirement)
