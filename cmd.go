@@ -61,11 +61,17 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&flagBackend, "backend", "b", "", "Backend to use (claude, kiro)")
+	rootCmd.Flags().StringVarP(&flagBackend, "backend", "b", "", "Backend to use (claude, kiro, gemini, cursor)")
 	rootCmd.Flags().BoolVarP(&flagList, "list", "l", false, "List available backends")
 	rootCmd.Flags().BoolVar(&flagInit, "init", false, "Initialize project config (.ai-proxy/config.json)")
 }
 
+// Execute runs the root CLI command.
+//
+// This is the entrypoint used by main(). It parses flags/args and either:
+//   - initializes project config (--init),
+//   - lists configured backends (--list), or
+//   - starts interactive mode (no args) / sends a one-shot prompt (args present).
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

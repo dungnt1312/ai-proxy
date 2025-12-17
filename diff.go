@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+// FileSnapshot is a lightweight snapshot of file contents used to compute a human-readable diff.
+//
+// It stores a map of relative file path -> MD5 hash of content. It is intended for quick "what
+// changed?" reporting in workflows, not for cryptographic integrity.
 type FileSnapshot struct {
 	Files map[string]string // path -> md5 hash
 }
@@ -33,6 +37,8 @@ func takeSnapshot() *FileSnapshot {
 	return snap
 }
 
+// Diff returns a Markdown report describing new/modified/deleted files between snapshots.
+// For new and modified files, it also includes a truncated content preview.
 func (before *FileSnapshot) Diff(after *FileSnapshot) string {
 	var diff strings.Builder
 	diff.WriteString("# Changes Made\n\n")

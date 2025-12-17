@@ -14,8 +14,11 @@ import (
 	"github.com/peterh/liner"
 )
 
+// Message is a single chat turn stored in the in-memory history.
 type Message struct {
-	Role    string
+	// Role is the message author ("user" or "assistant").
+	Role string
+	// Content is the raw message text.
 	Content string
 }
 

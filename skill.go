@@ -11,6 +11,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Skill is a reusable prompt template that can be executed standalone (via `/skill`) or as part of
+// a workflow stage (via Stage.Skill).
+//
+// A skill is loaded from a directory containing:
+//   - skill.yaml: metadata (name, description, stage defaults, inputs)
+//   - prompt.md: the prompt template text
 type Skill struct {
 	Name        string       `yaml:"name"`
 	Description string       `yaml:"description"`
@@ -23,6 +29,7 @@ type Skill struct {
 	Path        string       `yaml:"-"` // Skill directory path
 }
 
+// SkillStage defines default execution settings for a skill.
 type SkillStage struct {
 	Backend     string `yaml:"backend"`
 	Model       string `yaml:"model"`
@@ -30,6 +37,8 @@ type SkillStage struct {
 	OutputFile  string `yaml:"outputFile"`
 }
 
+// SkillInput declares an input placeholder used by prompt.md.
+// Inputs are substituted via the pattern {{.<Name>}}.
 type SkillInput struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description"`
@@ -96,6 +105,11 @@ func loadSkill(path string) (*Skill, error) {
 	return &skill, nil
 }
 
+// Run renders the skill prompt and executes it using the selected backend.
+//
+// Inputs are substituted into s.Prompt using {{.<InputName>}} placeholders.
+// When ctx is non-nil, standard placeholders like {{.ProjectContext}}, {{.Requirement}}, and
+// {{.DiffContent}} are also substituted.
 func (s *Skill) Run(inputs map[string]string, ctx *WorkflowContext) (string, error) {
 	// Build prompt from template
 	prompt := s.Prompt
@@ -144,6 +158,9 @@ func (s *Skill) Run(inputs map[string]string, ctx *WorkflowContext) (string, err
 	return result, nil
 }
 
+// ToStage converts the skill into a Stage with equivalent execution settings.
+//
+// This is useful when composing workflows programmatically (rather than via JSON config).
 func (s *Skill) ToStage() Stage {
 	return Stage{
 		Name:        s.Name,

@@ -6,19 +6,32 @@ import (
 	"path/filepath"
 )
 
+// BackendConfig describes how to execute a backend CLI (command, args, and flag conventions).
 type BackendConfig struct {
-	Name       string   `json:"name"`
-	Cmd        string   `json:"cmd"`
-	Args       []string `json:"args"`
-	PromptFlag string   `json:"promptFlag"`
-	ResumeFlag string   `json:"resumeFlag"`
-	ModelFlag  string   `json:"modelFlag,omitempty"` // e.g., "--model" for claude/kiro
+	// Name is a human-friendly backend label shown in the UI (e.g. "Claude", "Gemini").
+	Name string `json:"name"`
+	// Cmd is the executable name to invoke (must be available on PATH).
+	Cmd string `json:"cmd"`
+	// Args are default arguments to pass to the backend CLI.
+	Args []string `json:"args"`
+	// PromptFlag is the CLI flag that accepts the prompt text (e.g. "-p").
+	// If empty, the prompt is appended as a positional argument.
+	PromptFlag string `json:"promptFlag"`
+	// ResumeFlag is the CLI flag to resume/continue a prior chat session, if supported.
+	ResumeFlag string `json:"resumeFlag"`
+	// ModelFlag is the CLI flag that selects a model (e.g. "--model" or "-m").
+	ModelFlag string `json:"modelFlag,omitempty"` // e.g., "--model" for claude/kiro
 }
 
+// Config is the global configuration loaded from `~/.ai-proxy.json`.
+// It defines available backends and optional workflow overrides.
 type Config struct {
-	Default   string                   `json:"default"`
-	Backends  map[string]BackendConfig `json:"backends"`
-	Workflows map[string]Workflow      `json:"workflows,omitempty"`
+	// Default is the backend key to use when none is explicitly selected.
+	Default string `json:"default"`
+	// Backends maps a backend key (e.g. "claude") to its execution configuration.
+	Backends map[string]BackendConfig `json:"backends"`
+	// Workflows optionally overrides/extends built-in workflows with project-defined workflows.
+	Workflows map[string]Workflow `json:"workflows,omitempty"`
 }
 
 var configPath string
@@ -74,8 +87,9 @@ func defaultConfig() *Config {
 				ModelFlag:  "-m",
 			},
 			"cursor": {
-				Name:       "Cursor",
-				Cmd:        "cursor",
+				Name: "Cursor",
+				// Cursor's agent binary is typically named "cursor-agent" (as documented in README.md).
+				Cmd:        "cursor-agent",
 				Args:       []string{},
 				PromptFlag: "",
 				ResumeFlag: "",

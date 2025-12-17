@@ -10,6 +10,8 @@ import (
 const localConfigDir = ".ai-proxy"
 const localConfigFile = ".ai-proxy/config.json"
 
+// ProjectConfig is the per-project configuration stored at `.ai-proxy/config.json`.
+// It currently supports defining/overriding workflows.
 type ProjectConfig struct {
 	Workflows map[string]Workflow `json:"workflows"`
 }
